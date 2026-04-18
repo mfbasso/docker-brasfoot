@@ -60,6 +60,9 @@ jobs:
           name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}
           path: dist
 
+      - name: Restore AppImage permissions
+        run: chmod +x dist/brasfoot.AppImage
+
       - name: Publish AppImage to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -86,6 +89,9 @@ jobs:
         with:
           name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}
           path: root/root/bin
+
+      - name: Restore AppImage permissions
+        run: chmod +x root/root/bin/brasfoot.AppImage
 
       - name: Set image name
         run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"

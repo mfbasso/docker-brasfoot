@@ -7,6 +7,8 @@ ENV TITLE=Brasfoot \
 # add local files
 COPY /root /
 
+RUN chmod +x /root/bin/brasfoot.AppImage
+
 # ports and volumes
 EXPOSE 3000
 
