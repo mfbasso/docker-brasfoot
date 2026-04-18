@@ -2,8 +2,8 @@ name: Build And Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -11,9 +11,21 @@ permissions:
   packages: write
 
 jobs:
+  prepare_version:
+    name: Prepare Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+
+    steps:
+      - name: Generate date-based version
+        id: version
+        run: echo "value=$(date -u +'%Y%m%d.%H.%M')" >> "$GITHUB_OUTPUT"
+
   build_appimage:
     name: Build AppImage Artifact
     runs-on: ubuntu-latest
+    needs: prepare_version
 
     steps:
       - name: Checkout
@@ -29,7 +41,7 @@ jobs:
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: brasfoot-appimage
+          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}
           path: root/root/bin/brasfoot.AppImage
           if-no-files-found: error
           retention-days: 14
@@ -37,26 +49,33 @@ jobs:
   publish_release:
     name: Publish Release Asset
     runs-on: ubuntu-latest
-    needs: build_appimage
-    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - prepare_version
+      - build_appimage
 
     steps:
       - name: Download AppImage artifact
         uses: actions/download-artifact@v4
         with:
-          name: brasfoot-appimage
+          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}
           path: dist
 
       - name: Publish AppImage to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare_version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Release ${{ needs.prepare_version.outputs.version }}
+          generate_release_notes: true
           files: dist/brasfoot.AppImage
           fail_on_unmatched_files: true
 
   build_and_push_docker:
     name: Build And Push Docker Image
     runs-on: ubuntu-latest
-    needs: build_appimage
+    needs:
+      - prepare_version
+      - build_appimage
 
     steps:
       - name: Checkout
@@ -65,7 +84,7 @@ jobs:
       - name: Download AppImage artifact
         uses: actions/download-artifact@v4
         with:
-          name: brasfoot-appimage
+          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}
           path: root/root/bin
 
       - name: Set image name
@@ -78,16 +97,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=tag
-            type=sha
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
-
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -97,5 +106,6 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ needs.prepare_version.outputs.version }}
+            ${{ env.IMAGE_NAME }}:latest

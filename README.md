@@ -1,16 +1,35 @@
 # Docker Brasfoot
 
-Container para executar o Brasfoot em ambiente LinuxServer Selkies (acesso via navegador), usando **AppImage** como artefato final de runtime.
+Container para executar o Brasfoot em ambiente LinuxServer Selkies (acesso via navegador), usando AppImage como artefato final de runtime.
 
-## Visao geral
+## Uso recomendado (GHCR)
 
-Este projeto segue um fluxo AppImage-only:
+Imagem publicada:
 
-1. O script `scripts/bootstrap.sh` baixa e extrai o instalador oficial do Brasfoot.
-2. O mesmo script empacota o jogo em `brasfoot.AppImage`.
-3. O artefato final e colocado no contexto da imagem em `root/root/bin/brasfoot.AppImage`.
-4. No container, ele fica disponivel em `/root/bin/brasfoot.AppImage`.
-5. Os scripts de autostart executam o AppImage diretamente.
+- `ghcr.io/mfbasso/docker-brasfoot:latest`
+
+### Run rapido
+
+```bash
+docker run --rm \
+   --name=brasfoot \
+   -e PUID=1000 \
+   -e PGID=1000 \
+   -e TZ=America/Sao_Paulo \
+   -p 3000:3000 \
+   --shm-size="1gb" \
+   ghcr.io/mfbasso/docker-brasfoot:latest
+```
+
+## Visao geral do runtime
+
+Fluxo AppImage-only:
+
+1. O bootstrap baixa e extrai o instalador oficial do Brasfoot.
+2. O bootstrap empacota o jogo em `brasfoot.AppImage`.
+3. No build context, o artefato fica em `root/root/bin/brasfoot.AppImage`.
+4. No container, ele fica em `/root/bin/brasfoot.AppImage`.
+5. Os scripts de autostart executam esse AppImage diretamente.
 
 ## Estrutura do projeto
 
@@ -20,16 +39,16 @@ Este projeto segue um fluxo AppImage-only:
 - `root/defaults/autostart_wayland`: startup Wayland executando o AppImage.
 - `.github/workflows/release.yml`: workflow de build/release AppImage + publish no GHCR.
 
-## Pre-requisitos
+## Desenvolvimento local (manual)
 
-Para gerar artefatos localmente:
+Use esta secao apenas se quiser montar tudo localmente (debug/manutencao).
+
+### Pre-requisitos
 
 - Docker
 - Acesso a internet (download do instalador do Brasfoot e imagens auxiliares)
 
 Nao e necessario Java no host para executar o container final.
-
-## Quick start
 
 ### 1) Gerar o AppImage (bootstrap)
 
@@ -47,9 +66,7 @@ Ao final, o artefato esperado e:
 docker build -t docker-brasfoot .
 ```
 
-### 3) Rodar o container
-
-Comando base (equivalente ao seu teste):
+### 3) Rodar imagem local
 
 ```bash
 docker run --rm \
@@ -58,39 +75,13 @@ docker run --rm \
   -e PGID=1000 \
   -e TZ=America/Sao_Paulo \
   -p 3000:3000 \
-  -p 3001:3001 \
   --shm-size="1gb" \
   docker-brasfoot
 ```
-
-Com persistencia em `/config` (recomendado):
-
-```bash
-docker run --rm \
-  --name=brasfoot \
-  -e PUID=1000 \
-  -e PGID=1000 \
-  -e TZ=America/Sao_Paulo \
-  -p 3000:3000 \
-  -p 3001:3001 \
-  -v /path/to/config:/config \
-  --shm-size="1gb" \
-  --restart unless-stopped \
-  docker-brasfoot
-```
-
-## Variaveis e parametros
-
-### Variaveis de ambiente
-
-- `PUID`: UID do usuario no host.
-- `PGID`: GID do grupo no host.
-- `TZ`: timezone do container.
 
 ### Portas
 
 - `3000`: interface principal no browser (Selkies).
-- `3001`: porta auxiliar usada pelo stack da imagem base.
 
 ### Memoria compartilhada
 
@@ -112,16 +103,20 @@ Workflow: `.github/workflows/release.yml`
 
 Jobs implementados:
 
-1. **Build AppImage Artifact**
+1. **Prepare Version**
+   - Gera versao UTC no formato `YYYYMMDD.hh.mm`.
+
+2. **Build AppImage Artifact**
    - Executa `scripts/bootstrap.sh`.
-   - Publica artifact `brasfoot-appimage`.
+   - Publica artifact versionado.
 
-2. **Publish Release Asset**
-   - Em tags `v*`, publica `brasfoot.AppImage` na release do GitHub.
+3. **Publish Release Asset**
+   - Cria release automatica na `main`.
+   - Anexa `brasfoot.AppImage`.
 
-3. **Build And Push Docker Image**
+4. **Build And Push Docker Image**
    - Baixa o artifact AppImage.
-   - Builda e publica imagem no GHCR (`ghcr.io/<owner>/<repo>`).
+   - Builda e publica imagem no GHCR com tag de versao e `latest`.
 
 ## Troubleshooting
 
@@ -138,9 +133,9 @@ Estado correto deste projeto:
 
 Cheque:
 
-1. Se o bootstrap foi executado antes do `docker build`.
-2. Se o arquivo existe no contexto: `root/root/bin/brasfoot.AppImage`.
-3. Se o build usou a versao mais recente do contexto.
+1. Se a imagem certa foi puxada do GHCR.
+2. Se o container esta rodando com portas e `shm-size` esperados.
+3. Se quiser validar localmente, confira `root/root/bin/brasfoot.AppImage` antes do `docker build`.
 4. Logs do container:
 
 ```bash
@@ -155,10 +150,8 @@ docker run --rm -it --entrypoint sh docker-brasfoot -lc 'ls -lah /root/bin'
 
 ## Fluxo recomendado de release
 
-1. Rodar bootstrap localmente ou no CI.
-2. Validar build da imagem.
-3. Criar tag semantica (`vX.Y.Z`).
-4. Deixar o workflow publicar:
+1. Fazer push para `main`.
+2. Deixar o workflow publicar automaticamente:
    - AppImage na Release
    - Docker image no GHCR
 
