@@ -8,7 +8,7 @@ APPIMAGE_EXE="/root/bin/brasfoot.AppImage"
 # /root/bin/brasfoot.AppImage
 if [ -x "$APPIMAGE_EXE" ]; then
 	export APPIMAGE_EXTRACT_AND_RUN=1
-	exec "$APPIMAGE_EXE"
+	exec "$APPIMAGE_EXE" --appimage-extract-and-run
 fi
 
 echo "Arquivo AppImage nao encontrado ou sem permissao de execucao: $APPIMAGE_EXE"

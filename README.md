@@ -142,6 +142,15 @@ Cheque:
 docker logs brasfoot
 ```
 
+Se voce entrar no shell do container e rodar o arquivo manualmente, use o modo sem FUSE:
+
+```bash
+APPIMAGE_EXTRACT_AND_RUN=1 /root/bin/brasfoot.AppImage --appimage-extract-and-run
+```
+
+Executar apenas `/root/bin/brasfoot.AppImage` pode falhar com `dlopen(): error loading libfuse.so.2` em imagens que nao possuem FUSE.
+Se aparecer `bash: $'\r': command not found`, refaça o comando sem caracteres CRLF (copiar/colar com fim de linha Unix).
+
 ### Conferir conteudo da imagem
 
 ```bash

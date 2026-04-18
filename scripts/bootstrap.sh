@@ -20,6 +20,7 @@ APPIMAGE_PATH="$CONTAINER_ROOT_DIR/bin/$APPIMAGE_NAME"
 APPDIR_NAME="brasfoot.AppDir"
 APPDIR_PATH="$BIN_DIR/$APPDIR_NAME"
 JRE_STAGING_DIR="$BIN_DIR/jre"
+INNER_EXE_PATH=""
 
 mkdir -p "$BIN_DIR" "$EXTRACT_DIR" "$APP_DIR"
 
@@ -49,12 +50,11 @@ extract_with_docker_7z() {
 	local output_dir="$2"
 
 	docker run --rm \
-		--user "$HOST_UID:$HOST_GID" \
 		-v "$BIN_DIR:/work" \
 		-w /work \
 		alpine:3.20 \
-		sh -lc 'apk add --no-cache p7zip >/dev/null && 7z x -y "$0" -o"$1" || true' \
-		"$input_file" "$output_dir"
+		sh -lc 'apk add --no-cache p7zip >/dev/null && 7z x -y "$0" -o"$1" || true; chown -R "$2:$3" /work || true' \
+		"$input_file" "$output_dir" "$HOST_UID" "$HOST_GID"
 }
 
 build_appimage() {
@@ -97,6 +97,15 @@ APPDIR="$(cd "$(dirname "$0")/../.." && pwd)"
 APP_HOME="$APPDIR/opt/brasfoot"
 JAVA_BIN="$APPDIR/opt/jre/bin/java"
 APP_EXE="$APP_HOME/bf22-23.exe"
+
+if [ ! -f "$APP_EXE" ]; then
+	APP_EXE="$(find "$APP_HOME" -type f -iname 'bf22-23.exe' | head -n 1 || true)"
+fi
+
+if [ -z "$APP_EXE" ] || [ ! -f "$APP_EXE" ]; then
+	echo "Erro: bf22-23.exe nao encontrado dentro do AppImage em $APP_HOME"
+	exit 1
+fi
 
 mkdir -p "$HOME/.local/share/brasfoot"
 cd "$APP_HOME"
@@ -194,8 +203,15 @@ extract_with_docker_7z "$EXE_NAME" "extracted"
 
 if [ -f "$EXTRACT_DIR/$INNER_EXE_NAME" ]; then
 	echo "Arquivo principal encontrado: $EXTRACT_DIR/$INNER_EXE_NAME"
+	INNER_EXE_PATH="$EXTRACT_DIR/$INNER_EXE_NAME"
 else
-	echo "Aviso: $INNER_EXE_NAME nao encontrado na extração"
+	INNER_EXE_PATH="$(find "$EXTRACT_DIR" -type f -iname "$INNER_EXE_NAME" | head -n 1 || true)"
+	if [ -n "$INNER_EXE_PATH" ]; then
+		echo "Arquivo principal encontrado em caminho alternativo: $INNER_EXE_PATH"
+	else
+		echo "Erro: $INNER_EXE_NAME nao encontrado na extração"
+		exit 1
+	fi
 fi
 
 echo "[4/6] Copiando conteúdo extraído para $APP_DIR"
