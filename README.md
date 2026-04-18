@@ -17,6 +17,7 @@ docker run --rm \
    -e PGID=1000 \
    -e TZ=America/Sao_Paulo \
    -p 3000:3000 \
+   -v ./data:/data \
    --shm-size="1gb" \
    ghcr.io/mfbasso/docker-brasfoot:latest
 ```
@@ -75,9 +76,18 @@ docker run --rm \
   -e PGID=1000 \
   -e TZ=America/Sao_Paulo \
   -p 3000:3000 \
+   -v ./data:/data \
   --shm-size="1gb" \
   docker-brasfoot
 ```
+
+### Persistencia de dados
+
+- O runtime do AppImage e extraido em `/data`.
+- Recomendacao: usar volume nomeado Docker (`brasfoot-data:/data`) para evitar erros de permissao/chown no host (comum em macOS/Colima).
+- Opcional: bind mount de pasta local apenas se seu ambiente permitir (`-v /caminho/absoluto:/data`).
+- Na primeira execucao (ou quando o AppImage mudar), a imagem e reextraida automaticamente.
+- Isso permite persistir os dados que o jogo grava entre reinicializacoes do container.
 
 ### Portas
 
@@ -92,6 +102,8 @@ docker run --rm \
 - O `Dockerfile` copia `root/` para a raiz da imagem com `COPY /root /`.
 - Por isso, qualquer arquivo em `root/root/bin` no repo passa a existir em `/root/bin` dentro do container.
 - O autostart procura e executa:
+
+- Antes de executar, o autostart extrai o AppImage para `/data` e inicia via `AppRun` desse runtime persistente.
 
 ```bash
 /root/bin/brasfoot.AppImage
@@ -150,6 +162,12 @@ Se voce entrar no shell do container e rodar o arquivo manualmente, use o modo s
 
 ```bash
 APPIMAGE_EXTRACT_AND_RUN=1 /root/bin/brasfoot.AppImage --appimage-extract-and-run
+```
+
+Para reproduzir exatamente o modo de startup com persistencia, rode:
+
+```bash
+/data/squashfs-root/AppRun
 ```
 
 Executar apenas `/root/bin/brasfoot.AppImage` pode falhar com `dlopen(): error loading libfuse.so.2` em imagens que nao possuem FUSE.

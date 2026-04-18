@@ -3,13 +3,46 @@
 set -euo pipefail
 
 APPIMAGE_EXE="/root/bin/brasfoot.AppImage"
+RUNTIME_ROOT="/data"
+RUNTIME_DIR="$RUNTIME_ROOT/squashfs-root"
+HASH_FILE="$RUNTIME_ROOT/.appimage.sha256"
+CONTAINER_STDOUT="/proc/1/fd/1"
+CONTAINER_STDERR="/proc/1/fd/2"
 
 # Brasfoot startup command inside container:
-# /root/bin/brasfoot.AppImage
-if [ -x "$APPIMAGE_EXE" ]; then
-	export APPIMAGE_EXTRACT_AND_RUN=1
-	exec "$APPIMAGE_EXE" --appimage-extract-and-run
+# /root/bin/brasfoot.AppImage (extraido para /data para persistencia)
+if [ ! -x "$APPIMAGE_EXE" ]; then
+	echo "Arquivo AppImage nao encontrado ou sem permissao de execucao: $APPIMAGE_EXE"
+	exit 1
 fi
 
-echo "Arquivo AppImage nao encontrado ou sem permissao de execucao: $APPIMAGE_EXE"
-exit 1
+mkdir -p "$RUNTIME_ROOT"
+
+current_hash="$(sha256sum "$APPIMAGE_EXE" | awk '{print $1}')"
+stored_hash="$(cat "$HASH_FILE" 2>/dev/null || true)"
+
+if [ ! -w "$RUNTIME_ROOT" ]; then
+	echo "Aviso: /data sem permissao de escrita, usando fallback em /tmp/brasfoot-runtime" >&2
+	RUNTIME_ROOT="/tmp/brasfoot-runtime"
+	RUNTIME_DIR="$RUNTIME_ROOT/squashfs-root"
+	HASH_FILE="$RUNTIME_ROOT/.appimage.sha256"
+	mkdir -p "$RUNTIME_ROOT"
+fi
+
+if [ ! -x "$RUNTIME_DIR/AppRun" ] || [ "$current_hash" != "$stored_hash" ]; then
+	rm -rf "$RUNTIME_DIR"
+	rm -f "$HASH_FILE"
+	mkdir -p "$RUNTIME_ROOT"
+	(
+		cd "$RUNTIME_ROOT"
+		APPIMAGE_EXTRACT_AND_RUN=1 "$APPIMAGE_EXE" --appimage-extract
+	)
+	echo "$current_hash" > "$HASH_FILE"
+	chmod +x "$RUNTIME_DIR/AppRun"
+fi
+
+if [ -w "$CONTAINER_STDOUT" ] && [ -w "$CONTAINER_STDERR" ]; then
+	exec "$RUNTIME_DIR/AppRun" >>"$CONTAINER_STDOUT" 2>>"$CONTAINER_STDERR"
+fi
+
+exec "$RUNTIME_DIR/AppRun"
