@@ -141,7 +141,6 @@ EOF
 		sh -lc 'apt-get update >/dev/null && apt-get install -y --no-install-recommends ca-certificates wget libglib2.0-0 file >/dev/null && (apt-get install -y --no-install-recommends libfuse2 >/dev/null || apt-get install -y --no-install-recommends libfuse2t64 >/dev/null) && wget -q -O appimagetool.AppImage "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-""$0"".AppImage" && chmod +x appimagetool.AppImage && ARCH="$0" APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool.AppImage "$1" "$2"' \
 		"$appimage_arch" "$APPDIR_NAME" "$APPIMAGE_NAME"
 
-	chmod +x "$BIN_DIR/$APPIMAGE_NAME"
 	cp -f "$BIN_DIR/$APPIMAGE_NAME" "$APPIMAGE_PATH"
 	chmod +x "$APPIMAGE_PATH"
 }

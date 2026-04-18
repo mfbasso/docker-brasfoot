@@ -17,12 +17,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build AppImage via bootstrap
         run: |
           chmod +x scripts/bootstrap.sh
-          sh scripts/bootstrap.sh
+          bash scripts/bootstrap.sh
+          ls -lah root/root/bin || true
           test -f root/root/bin/brasfoot.AppImage
 
       - name: Upload AppImage artifact
@@ -59,7 +60,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download AppImage artifact
         uses: actions/download-artifact@v4
