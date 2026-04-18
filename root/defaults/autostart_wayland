@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+APPIMAGE_EXE="/root/bin/brasfoot.AppImage"
+
+# Brasfoot startup command inside container:
+# /root/bin/brasfoot.AppImage
+if [ -x "$APPIMAGE_EXE" ]; then
+	export APPIMAGE_EXTRACT_AND_RUN=1
+	exec "$APPIMAGE_EXE"
+fi
+
+echo "Arquivo AppImage nao encontrado ou sem permissao de execucao: $APPIMAGE_EXE"
+exit 1
