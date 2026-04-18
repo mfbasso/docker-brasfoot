@@ -6,6 +6,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="$SCRIPT_DIR/bin"
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
 EXE_NAME="brasfoot22-23.exe"
 EXE_PATH="$BIN_DIR/$EXE_NAME"
 EXTRACT_DIR="$BIN_DIR/extracted"
@@ -21,11 +23,33 @@ JRE_STAGING_DIR="$BIN_DIR/jre"
 
 mkdir -p "$BIN_DIR" "$EXTRACT_DIR" "$APP_DIR"
 
+safe_remove_path() {
+	local target="$1"
+	local parent
+	local base
+
+	if [ ! -e "$target" ]; then
+		return 0
+	fi
+
+	rm -rf "$target" 2>/dev/null && return 0
+
+	parent="$(dirname "$target")"
+	base="$(basename "$target")"
+
+	docker run --rm \
+		-v "$parent:/target_parent" \
+		alpine:3.20 \
+		sh -lc 'rm -rf "/target_parent/$0"' \
+		"$base"
+}
+
 extract_with_docker_7z() {
 	local input_file="$1"
 	local output_dir="$2"
 
 	docker run --rm \
+		--user "$HOST_UID:$HOST_GID" \
 		-v "$BIN_DIR:/work" \
 		-w /work \
 		alpine:3.20 \
@@ -59,6 +83,7 @@ build_appimage() {
 	cp -a "$APP_DIR" "$APPDIR_PATH/opt/brasfoot"
 
 	docker run --rm \
+		--user "$HOST_UID:$HOST_GID" \
 		-v "$BIN_DIR:/work" \
 		eclipse-temurin:8-jre-jammy \
 		sh -lc 'rm -rf /work/jre && cp -r /opt/java/openjdk /work/jre'
@@ -138,30 +163,30 @@ EOF
 		-v "$BIN_DIR:/work" \
 		-w /work \
 		ubuntu:24.04 \
-		sh -lc 'apt-get update >/dev/null && apt-get install -y --no-install-recommends ca-certificates wget libglib2.0-0 file >/dev/null && (apt-get install -y --no-install-recommends libfuse2 >/dev/null || apt-get install -y --no-install-recommends libfuse2t64 >/dev/null) && wget -q -O appimagetool.AppImage "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-""$0"".AppImage" && chmod +x appimagetool.AppImage && ARCH="$0" APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool.AppImage "$1" "$2"' \
-		"$appimage_arch" "$APPDIR_NAME" "$APPIMAGE_NAME"
+		sh -lc 'apt-get update >/dev/null && apt-get install -y --no-install-recommends ca-certificates wget libglib2.0-0 file >/dev/null && (apt-get install -y --no-install-recommends libfuse2 >/dev/null || apt-get install -y --no-install-recommends libfuse2t64 >/dev/null) && wget -q -O appimagetool.AppImage "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-""$0"".AppImage" && chmod +x appimagetool.AppImage && ARCH="$0" APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool.AppImage "$1" "$2" && chown -R "$3:$4" /work || true' \
+		"$appimage_arch" "$APPDIR_NAME" "$APPIMAGE_NAME" "$HOST_UID" "$HOST_GID"
 
 	cp -f "$BIN_DIR/$APPIMAGE_NAME" "$APPIMAGE_PATH"
 	chmod +x "$APPIMAGE_PATH"
 }
 
 cleanup_artifacts() {
-	rm -rf "$APP_DIR"
-	rm -rf "$ROOT_DIR/bin"
-	rm -rf "$EXTRACT_DIR"
-	rm -rf "$APPDIR_PATH"
-	rm -rf "$JRE_STAGING_DIR"
-	rm -f "$BIN_DIR/$EXE_NAME"
-	rm -f "$BIN_DIR/$APPIMAGE_NAME"
-	rm -f "$BIN_DIR/appimagetool.AppImage"
-	rm -rf "$BIN_DIR/jar"
+	safe_remove_path "$APP_DIR"
+	safe_remove_path "$ROOT_DIR/bin"
+	safe_remove_path "$EXTRACT_DIR"
+	safe_remove_path "$APPDIR_PATH"
+	safe_remove_path "$JRE_STAGING_DIR"
+	safe_remove_path "$BIN_DIR/$EXE_NAME"
+	safe_remove_path "$BIN_DIR/$APPIMAGE_NAME"
+	safe_remove_path "$BIN_DIR/appimagetool.AppImage"
+	safe_remove_path "$BIN_DIR/jar"
 }
 
 echo "[1/6] Baixando $EXE_NAME"
 wget -O "$EXE_PATH" "https://www.brasfoot.com/download22/$EXE_NAME"
 
 echo "[2/6] Limpando pasta de extração"
-rm -rf "$EXTRACT_DIR"
+safe_remove_path "$EXTRACT_DIR"
 mkdir -p "$EXTRACT_DIR"
 
 echo "[3/6] Extraindo $EXE_NAME com docker run + 7z"
