@@ -107,16 +107,20 @@ Jobs implementados:
    - Gera versao UTC no formato `YYYYMMDD.hh.mm`.
 
 2. **Build AppImage Artifact**
-   - Executa `scripts/bootstrap.sh`.
-   - Publica artifact versionado.
+   - Executa `scripts/bootstrap.sh` por arquitetura.
+   - Publica artifacts versionados para `amd64` e `arm64`.
 
 3. **Publish Release Asset**
    - Cria release automatica na `main`.
-   - Anexa `brasfoot.AppImage`.
+   - Anexa `brasfoot-amd64.AppImage` e `brasfoot-arm64.AppImage`.
 
 4. **Build And Push Docker Image**
-   - Baixa o artifact AppImage.
-   - Builda e publica imagem no GHCR com tag de versao e `latest`.
+   - Baixa o artifact AppImage correto para cada arquitetura.
+   - Publica imagens temporarias por arquitetura.
+
+5. **Publish Docker Manifest**
+   - Cria o manifest multi-arch final no GHCR.
+   - Publica as tags de versao e `latest` apontando para `amd64` e `arm64`.
 
 ## Troubleshooting
 
@@ -161,8 +165,8 @@ docker run --rm -it --entrypoint sh docker-brasfoot -lc 'ls -lah /root/bin'
 
 1. Fazer push para `main`.
 2. Deixar o workflow publicar automaticamente:
-   - AppImage na Release
-   - Docker image no GHCR
+   - AppImages `amd64` e `arm64` na Release
+   - Docker image multi-arch no GHCR
 
 ## Limpeza de ambiente local
 

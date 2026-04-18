@@ -24,25 +24,36 @@ jobs:
 
   build_appimage:
     name: Build AppImage Artifact
-    runs-on: ubuntu-latest
     needs: prepare_version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
       - name: Build AppImage via bootstrap
+        env:
+          TARGETARCH: ${{ matrix.arch }}
         run: |
           chmod +x scripts/bootstrap.sh
           bash scripts/bootstrap.sh
           ls -lah root/root/bin || true
           test -f root/root/bin/brasfoot.AppImage
+          mv root/root/bin/brasfoot.AppImage root/root/bin/brasfoot-${{ matrix.arch }}.AppImage
 
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}
-          path: root/root/bin/brasfoot.AppImage
+          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}-${{ matrix.arch }}
+          path: root/root/bin/brasfoot-${{ matrix.arch }}.AppImage
           if-no-files-found: error
           retention-days: 14
 
@@ -54,14 +65,22 @@ jobs:
       - build_appimage
 
     steps:
-      - name: Download AppImage artifact
+      - name: Download amd64 AppImage artifact
         uses: actions/download-artifact@v4
         with:
-          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}
-          path: dist
+          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}-amd64
+          path: dist/amd64
+
+      - name: Download arm64 AppImage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}-arm64
+          path: dist/arm64
 
       - name: Restore AppImage permissions
-        run: chmod +x dist/brasfoot.AppImage
+        run: |
+          chmod +x dist/amd64/brasfoot-amd64.AppImage
+          chmod +x dist/arm64/brasfoot-arm64.AppImage
 
       - name: Publish AppImage to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -70,15 +89,25 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Release ${{ needs.prepare_version.outputs.version }}
           generate_release_notes: true
-          files: dist/brasfoot.AppImage
+          files: |
+            dist/amd64/brasfoot-amd64.AppImage
+            dist/arm64/brasfoot-arm64.AppImage
           fail_on_unmatched_files: true
 
   build_and_push_docker:
     name: Build And Push Docker Image
-    runs-on: ubuntu-latest
     needs:
       - prepare_version
       - build_appimage
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+          - arch: arm64
+            platform: linux/arm64
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -87,11 +116,13 @@ jobs:
       - name: Download AppImage artifact
         uses: actions/download-artifact@v4
         with:
-          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}
+          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}-${{ matrix.arch }}
           path: root/root/bin
 
       - name: Restore AppImage permissions
-        run: chmod +x root/root/bin/brasfoot.AppImage
+        run: |
+          mv root/root/bin/brasfoot-${{ matrix.arch }}.AppImage root/root/bin/brasfoot.AppImage
+          chmod +x root/root/bin/brasfoot.AppImage
 
       - name: Set image name
         run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
@@ -114,7 +145,35 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platform }}
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ needs.prepare_version.outputs.version }}
-            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ needs.prepare_version.outputs.version }}-${{ matrix.arch }}
+
+  publish_docker_manifest:
+    name: Publish Docker Manifest
+    runs-on: ubuntu-latest
+    needs:
+      - prepare_version
+      - build_and_push_docker
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create multi-arch manifest
+        run: |
+          docker buildx imagetools create \
+            -t "${IMAGE_NAME}:${{ needs.prepare_version.outputs.version }}" \
+            -t "${IMAGE_NAME}:latest" \
+            "${IMAGE_NAME}:${{ needs.prepare_version.outputs.version }}-amd64" \
+            "${IMAGE_NAME}:${{ needs.prepare_version.outputs.version }}-arm64"
