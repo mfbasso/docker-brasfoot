@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="MENU">
+    <item label="Brasfoot"
+      icon="/data/squashfs-root/usr/share/icons/hicolor/256x256/apps/brasfoot.png">
+      <action name="Execute">
+        <command>/data/squashfs-root/usr/bin/brasfoot</command>
+      </action>
+    </item>
+  </menu>
+</openbox_menu>

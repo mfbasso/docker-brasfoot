@@ -18,9 +18,12 @@ docker run --rm \
    -e TZ=America/Sao_Paulo \
    -p 3000:3000 \
    -v ./data:/data \
-   --shm-size="1gb" \
+   -v ./register:/config/.local/share/brasfoot \
+   --shm-size="2gb" \
    ghcr.io/mfbasso/docker-brasfoot:latest
 ```
+
+Esse modo e o recomendado para uso remoto (imagem publicada no GHCR).
 
 ## Visao geral do runtime
 
@@ -67,6 +70,18 @@ Ao final, o artefato esperado e:
 docker build -t docker-brasfoot .
 ```
 
+Opcionalmente, use os alvos do `Makefile`:
+
+```bash
+make build
+make run
+```
+
+Resumo dos alvos atuais do `Makefile`:
+
+- `make build`: executa `docker build -t docker-brasfoot .`
+- `make run`: sobe o container local com os mesmos mounts de persistencia (`./data` e `./register`)
+
 ### 3) Rodar imagem local
 
 ```bash
@@ -77,13 +92,16 @@ docker run --rm \
   -e TZ=America/Sao_Paulo \
   -p 3000:3000 \
    -v ./data:/data \
-  --shm-size="1gb" \
+   -v ./register:/config/.local/share/brasfoot \
+   --shm-size="2gb" \
   docker-brasfoot
 ```
 
 ### Persistencia de dados
 
 - O runtime do AppImage e extraido em `/data`.
+- O registro/licenca do Brasfoot deve persistir em `/config/.local/share/brasfoot`.
+- No projeto, isso e feito com `-v ./register:/config/.local/share/brasfoot`.
 - Recomendacao: usar volume nomeado Docker (`brasfoot-data:/data`) para evitar erros de permissao/chown no host (comum em macOS/Colima).
 - Opcional: bind mount de pasta local apenas se seu ambiente permitir (`-v /caminho/absoluto:/data`).
 - Na primeira execucao (ou quando o AppImage mudar), a imagem e reextraida automaticamente.
@@ -95,7 +113,7 @@ docker run --rm \
 
 ### Memoria compartilhada
 
-- `--shm-size="1gb"`: recomendado para apps graficos e estabilidade.
+- `--shm-size="2gb"`: recomendado para apps graficos e estabilidade.
 
 ## Como funciona o runtime
 

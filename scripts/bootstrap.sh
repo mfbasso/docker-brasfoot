@@ -110,7 +110,7 @@ fi
 mkdir -p "$HOME/.local/share/brasfoot"
 cd "$APP_HOME"
 
-exec "$JAVA_BIN" -Duser.home="$HOME/.local/share/brasfoot" -jar "$APP_EXE"
+exec "$JAVA_BIN" -Duser.home="$HOME/.local/share/brasfoot" -Xss4m -Xms512m -jar "$APP_EXE" -h
 EOF
 	chmod +x "$APPDIR_PATH/usr/bin/brasfoot"
 
