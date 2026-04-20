@@ -2,6 +2,8 @@ FROM ghcr.io/linuxserver/baseimage-selkies:debiantrixie
 
 # title
 ENV TITLE=Brasfoot \
+  NO_FULL=true \
+  NO_DECOR=true \
   PIXELFLUX_WAYLAND=true
 
 # add local files
