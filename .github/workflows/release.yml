@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Generate date-based version
         id: version
-        run: echo "value=$(date -u +'%Y%m%d.%H.%M')" >> "$GITHUB_OUTPUT"
+        run: echo "value=$(date -u +'%y.%m.%d%H%M')" >> "$GITHUB_OUTPUT"
 
   build_appimage:
     name: Build AppImage Artifact
@@ -39,12 +39,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Build AppImage via bootstrap
+      - name: Build AppImage via generate_app_image
         env:
           TARGETARCH: ${{ matrix.arch }}
         run: |
-          chmod +x scripts/bootstrap.sh
-          bash scripts/bootstrap.sh
+          chmod +x scripts/generate_app_image.sh
+          bash scripts/generate_app_image.sh
           ls -lah root/root/bin || true
           test -f root/root/bin/brasfoot.AppImage
           mv root/root/bin/brasfoot.AppImage root/root/bin/brasfoot-${{ matrix.arch }}.AppImage
@@ -98,7 +98,6 @@ jobs:
     name: Build And Push Docker Image
     needs:
       - prepare_version
-      - build_appimage
     strategy:
       fail-fast: false
       matrix:
@@ -112,17 +111,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      - name: Download AppImage artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: brasfoot-appimage-${{ needs.prepare_version.outputs.version }}-${{ matrix.arch }}
-          path: root/root/bin
-
-      - name: Restore AppImage permissions
-        run: |
-          mv root/root/bin/brasfoot-${{ matrix.arch }}.AppImage root/root/bin/brasfoot.AppImage
-          chmod +x root/root/bin/brasfoot.AppImage
 
       - name: Set image name
         run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"

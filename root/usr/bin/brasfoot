@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SOURCE_DIR="/opt/brasfoot"
+RUNTIME_DIR="${BRASFOOT_RUNTIME_DIR:-/data/brasfoot}"
+APP_EXE="$RUNTIME_DIR/bf22-23.exe"
+BRASFOOT_USER_HOME="${BRASFOOT_USER_HOME:-/data/register}"
+JAVA_BIN="${JAVA_BIN:-/usr/local/java8/bin/java}"
+CONTAINER_STDOUT="${CONTAINER_STDOUT:-/proc/1/fd/1}"
+CONTAINER_STDERR="${CONTAINER_STDERR:-/proc/1/fd/2}"
+
+if [ ! -f "$APP_EXE" ]; then
+	if [ ! -f "$SOURCE_DIR/bf22-23.exe" ]; then
+		echo "Arquivo bf22-23.exe nao encontrado em: $SOURCE_DIR"
+		exit 1
+	fi
+
+	mkdir -p "$RUNTIME_DIR"
+	cp -a "$SOURCE_DIR/." "$RUNTIME_DIR/"
+fi
+
+mkdir -p "$BRASFOOT_USER_HOME"
+cd "$RUNTIME_DIR"
+
+JAVA_CMD=(
+	"$JAVA_BIN"
+	-Duser.home="$BRASFOOT_USER_HOME"
+	-Xss4m -Xms512m
+	-jar "$APP_EXE" -h
+)
+
+if [ -w "$CONTAINER_STDOUT" ] && [ -w "$CONTAINER_STDERR" ]; then
+	exec "${JAVA_CMD[@]}" >>"$CONTAINER_STDOUT" 2>>"$CONTAINER_STDERR"
+fi
+
+exec "${JAVA_CMD[@]}"
