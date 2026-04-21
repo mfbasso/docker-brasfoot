@@ -225,5 +225,5 @@ build_appimage
 echo "[6/6] Limpando artefatos intermediarios"
 cleanup_artifacts
 
-echo "Concluido. AppImage pronto em: $APPIMAGE_PATH"
+echo "Concluido. AppImage pronto para release em: $APPIMAGE_PATH"
 

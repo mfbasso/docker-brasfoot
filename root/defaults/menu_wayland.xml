@@ -2,9 +2,14 @@
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="MENU">
     <item label="Brasfoot"
-      icon="/data/squashfs-root/usr/share/icons/hicolor/256x256/apps/brasfoot.png">
+      icon="/opt/brasfoot/brasfoot.png">
       <action name="Execute">
-        <command>/data/squashfs-root/usr/bin/brasfoot</command>
+        <command>brasfoot</command>
+      </action>
+    </item>
+    <item label="xterm" icon="/usr/share/pixmaps/xterm-color_48x48.xpm">
+      <action name="Execute">
+        <command>/usr/bin/xterm</command>
       </action>
     </item>
   </menu>
