@@ -25,6 +25,7 @@ cd "$RUNTIME_DIR"
 
 JAVA_CMD=(
 	"$JAVA_BIN"
+	-Dsun.awt.disablegrab=true
 	-Duser.home="$BRASFOOT_USER_HOME"
 	-Xss4m -Xms512m
 	-jar "$APP_EXE" -h
