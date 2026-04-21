@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Generate date-based version
         id: version
-        run: echo "value=$(date -u +'%Y%m%d.%H.%M')" >> "$GITHUB_OUTPUT"
+        run: echo "value=$(date -u +'%y.%m.%d%H%M')" >> "$GITHUB_OUTPUT"
 
   build_appimage:
     name: Build AppImage Artifact
